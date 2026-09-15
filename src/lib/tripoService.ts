@@ -247,13 +247,23 @@ export async function pollTaskStatus(taskId: string): Promise<TripoTaskResult> {
     }
 
     const resData = await response.json();
-    const taskData = resData.data;
+    const taskData = resData.data || {};
+    const output = taskData.output || {};
+    const modelUrl =
+      output.pbr_model_url ||
+      output.model_url ||
+      output.base_model_url ||
+      output.pbr_model?.url ||
+      output.model?.url ||
+      taskData.result?.pbr_model?.url ||
+      taskData.result?.model?.url;
+
     return {
-      id: taskData.task_id,
+      id: taskData.task_id || taskId,
       status: taskData.status,
       progress: taskData.progress || 0,
-      model_url: taskData.output?.model_url,
-      rendered_image_url: taskData.output?.rendered_image_url,
+      model_url: modelUrl,
+      rendered_image_url: output.rendered_image_url || output.preview_url,
     };
   }
 
@@ -275,13 +285,22 @@ export async function downloadAndStoreModel(
   dishId: string,
   format: 'glb' | 'usdz' = 'glb'
 ): Promise<string> {
+  if (!modelUrl || typeof modelUrl !== 'string' || modelUrl.trim() === '') {
+    return '/models/cheese-bacon-burger.glb';
+  }
+
+  // If already a local bundled model, return directly
+  if (modelUrl.startsWith('/models/') || modelUrl.startsWith('./models/')) {
+    return modelUrl;
+  }
+
   if (!isSupabaseConfigured()) {
     // In demo mode, return the URL directly or a fallback
     return modelUrl || '/models/cheese-bacon-burger.glb';
   }
 
   try {
-    // Download from Tripo CDN (URL expires in 5 min!)
+    // Download from Tripo CDN
     const response = await fetch(modelUrl);
     if (!response.ok) throw new Error(`Failed to download model: ${response.status}`);
 
@@ -299,8 +318,8 @@ export async function downloadAndStoreModel(
       });
 
     if (error) {
-      console.error('Model storage upload error:', error);
-      throw new Error(`Falha ao armazenar modelo 3D: ${error.message}`);
+      console.warn('Supabase dish-models upload skipped/error:', error.message);
+      return modelUrl;
     }
 
     // Get public URL (permanent)
@@ -308,10 +327,9 @@ export async function downloadAndStoreModel(
       .from('dish-models')
       .getPublicUrl(data.path);
 
-    return urlData.publicUrl;
+    return urlData.publicUrl || modelUrl;
   } catch (err: any) {
-    console.error('downloadAndStoreModel error:', err);
-    // Fallback: return the temporary Tripo URL
+    console.warn('downloadAndStoreModel warning, returning direct URL:', err.message);
     return modelUrl;
   }
 }

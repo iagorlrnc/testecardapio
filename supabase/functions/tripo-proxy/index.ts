@@ -337,14 +337,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       const resData = await statusRes.json();
       const taskData = resData.data || {};
+      const output = taskData.output || {};
+      const modelUrl =
+        output.pbr_model_url ||
+        output.model_url ||
+        output.base_model_url ||
+        output.pbr_model?.url ||
+        output.model?.url ||
+        taskData.result?.pbr_model?.url ||
+        taskData.result?.model?.url ||
+        null;
 
       return new Response(
         JSON.stringify({
           id: taskData.task_id || taskId,
           status: taskData.status || 'unknown',
           progress: typeof taskData.progress === 'number' ? taskData.progress : 0,
-          model_url: taskData.output?.model_url || null,
-          rendered_image_url: taskData.output?.rendered_image_url || null,
+          model_url: modelUrl,
+          rendered_image_url: output.rendered_image_url || output.preview_url || null,
           error: taskData.error_message || null,
         }),
         {

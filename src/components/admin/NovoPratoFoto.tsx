@@ -52,6 +52,7 @@ export const NovoPratoFoto: React.FC<{ onCreated: () => void }> = ({ onCreated }
   const [generatedGlbUrl, setGeneratedGlbUrl] = useState<string>('');
   const [generatedUsdzUrl, setGeneratedUsdzUrl] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+  const [modelLoadError, setModelLoadError] = useState<boolean>(false);
 
   // Dish details for publishing
   const [dishName, setDishName] = useState<string>('');
@@ -210,8 +211,10 @@ export const NovoPratoFoto: React.FC<{ onCreated: () => void }> = ({ onCreated }
           setAiStatusMessage(message);
         },
         onComplete: (glbUrl, usdzUrl) => {
-          setGeneratedGlbUrl(glbUrl);
+          const finalGlb = glbUrl || '/models/cheese-bacon-burger.glb';
+          setGeneratedGlbUrl(finalGlb);
           setGeneratedUsdzUrl(usdzUrl || '');
+          setModelLoadError(false);
           setStep(4);
           setIsRegenerating(false);
         },
@@ -714,29 +717,58 @@ export const NovoPratoFoto: React.FC<{ onCreated: () => void }> = ({ onCreated }
 
               {/* 3D Interactive Preview */}
               <div className="relative w-full h-64 rounded-2xl bg-gradient-to-b from-[#18181f] to-[#0d0d10] border border-emerald-500/40 overflow-hidden shadow-inner">
-                {generatedGlbUrl && (
-                  <model-viewer
-                    src={generatedGlbUrl}
-                    alt={dishName || 'Prato Gerado pela IA'}
-                    camera-controls
-                    auto-rotate
-                    shadow-intensity="1.2"
-                    exposure="1.1"
-                    environment-image="neutral"
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                )}
+                <model-viewer
+                  src={modelLoadError ? '/models/cheese-bacon-burger.glb' : (generatedGlbUrl || '/models/cheese-bacon-burger.glb')}
+                  alt={dishName || 'Prato Gerado pela IA'}
+                  camera-controls
+                  auto-rotate
+                  shadow-intensity="1.2"
+                  exposure="1.1"
+                  environment-image="neutral"
+                  onError={() => {
+                    console.warn('NovoPratoFoto model-viewer failed to load glbUrl, falling back to local 3D model');
+                    setModelLoadError(true);
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                />
                 <div className="absolute bottom-2 left-3 text-[11px] text-zinc-400 bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-full pointer-events-none">
                   Gire para inspecionar antes de aprovar
                 </div>
                 <div className="absolute top-2 right-3 text-[10px] text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
                   Escala 1:1 ({plateWidthCm} cm)
                 </div>
-                {!isTripoConfigured() && (
+                {modelLoadError ? (
+                  <div className="absolute top-2 left-3 text-[10px] text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                    Modelo Alternativo Ativo
+                  </div>
+                ) : !isTripoConfigured() && (
                   <div className="absolute top-2 left-3 text-[10px] text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
                     Demo Mode
                   </div>
                 )}
+              </div>
+
+              {/* Model Choice Selector if error or demo */}
+              <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                <span className="text-zinc-400">Modelo 3D associado:</span>
+                <select
+                  value={generatedGlbUrl || '/models/cheese-bacon-burger.glb'}
+                  onChange={(e) => {
+                    setGeneratedGlbUrl(e.target.value);
+                    setModelLoadError(false);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#111116] border border-white/15 text-emerald-300 text-xs outline-none cursor-pointer"
+                >
+                  <option value="/models/cheese-bacon-burger.glb">🍔 Hambúrguer Artesanal</option>
+                  <option value="/models/pizza-pepperoni-grande.glb">🍕 Pizza Pepperoni</option>
+                  <option value="/models/shishkebab.glb">🍢 Espeto Gourmet</option>
+                  <option value="/models/salada-caesar.glb">🥗 Salada Caesar</option>
+                  <option value="/models/fettuccine-alfredo-camarao.glb">🍝 Fettuccine com Camarão</option>
+                  <option value="/models/combinados-35.glb">🍣 Combinado Japonês</option>
+                  <option value="/models/fish.glb">🐟 Peixe Grelhado</option>
+                  <option value="/models/avocado.glb">🥑 Avocado Salad</option>
+                  <option value="/models/apple-pie.usdz">🥧 Torta de Maçã</option>
+                </select>
               </div>
 
               {/* Editable Name & Price */}

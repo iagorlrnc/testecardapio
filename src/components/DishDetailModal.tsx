@@ -50,6 +50,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [autoRotate, setAutoRotate] = useState<boolean>(true);
   const [lightingMode, setLightingMode] = useState<'warm' | 'studio' | 'neutral'>('warm');
+  const [modelError, setModelError] = useState<boolean>(false);
 
   // Check if inside In-App browser (Instagram, TikTok, Facebook)
   const isAppBrowser = () => {
@@ -68,6 +69,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
     setAddedSuccess(false);
     setShowPreCameraGuide(false);
     setShowInstagramBrowserSheet(false);
+    setModelError(false);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -220,7 +222,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
 
           <model-viewer
             ref={modelViewerRef as any}
-            src={dish.glbUrl}
+            src={modelError ? '/models/cheese-bacon-burger.glb' : (dish.glbUrl || '/models/cheese-bacon-burger.glb')}
             ios-src={dish.usdzUrl}
             alt={dish.name}
             poster={dish.poster}
@@ -237,6 +239,10 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
             ar-scale="fixed"
             ar-placement="floor"
             loading="eager"
+            onError={() => {
+              console.warn('DishDetailModal model-viewer failed to load glbUrl, falling back to default model');
+              setModelError(true);
+            }}
             style={{ width: '100%', height: '100%' }}
           >
             <div slot="ar-button" />

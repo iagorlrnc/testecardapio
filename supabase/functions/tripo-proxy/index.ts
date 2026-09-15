@@ -257,10 +257,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          file_token: fileToken,
-          texture: true,
-          pbr: true,
-          face_limit: 30000,
+          model: 'v3.1-20260211',
+          file: {
+            type: 'jpg',
+            file_token: fileToken,
+          },
         }),
       });
 

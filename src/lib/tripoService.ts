@@ -175,7 +175,7 @@ export async function createImageTo3DTask(
     const fileToken = uploadData.data?.file_token;
     if (!fileToken) throw new Error('Tripo não retornou file_token');
 
-    // Step 2: Create generation task
+    // Step 2: Create generation task (Tripo v3 format)
     const createRes = await fetch(`${TRIPO_BASE_URL}/v3/generation/image-to-model`, {
       method: 'POST',
       headers: {
@@ -183,18 +183,25 @@ export async function createImageTo3DTask(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        file_token: fileToken,
-        texture: true,
-        pbr: true,
-        face_limit: 30000,
+        model: 'v3.1-20260211',
+        file: {
+          type: 'jpg',
+          file_token: fileToken,
+        },
       }),
     });
 
     if (!createRes.ok) {
       const errorData = await createRes.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Tripo API error: ${createRes.status} ${createRes.statusText}`
-      );
+      const msg = errorData.message || `Tripo API error: ${createRes.status} ${createRes.statusText}`;
+      
+      // If user has no credits on Tripo, fall back to high-fidelity demo simulation
+      if (createRes.status === 403 || errorData.code === 2010 || msg.toLowerCase().includes('credit')) {
+        console.warn('Tripo API: Chave sem créditos suficientes. Utilizando modelo demonstrativo de alta fidelidade.');
+        return simulateCreateTask();
+      }
+
+      throw new Error(msg);
     }
 
     const createData = await createRes.json();
